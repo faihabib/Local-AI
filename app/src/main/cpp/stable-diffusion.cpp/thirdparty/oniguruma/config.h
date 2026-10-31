@@ -1,0 +1,23 @@
+/* Minimal config.h for oniguruma on Android/NDK */
+#define HAVE_STDINT_H 1
+#define HAVE_SYS_TYPES_H 1
+#define HAVE_SYS_STAT_H 1
+#define HAVE_UNISTD_H 1
+#define HAVE_LIMITS_H 1
+#define HAVE_STRING_H 1
+#define HAVE_STDLIB_H 1
+#define HAVE_STDARG_H 1
+#define HAVE_STDIO_H 1
+#define SIZEOF_INT 4
+#define SIZEOF_LONG 8
+#define SIZEOF_LONG_LONG 8
+#define SIZEOF_VOIDP 8
+#define SIZEOF_SIZE_T 8
+#define SIZEOF_OFF_T 8
+#define SIZEOF_INT64_T 8
+#define PACKAGE_NAME "oniguruma"
+#define PACKAGE_VERSION "6.9.9"
+#define USE_CALL 1
+#define USE_CVAR 1
+#define USE_COMBINATION_EXPLOSION_CHECK 1
+#define USE_DIRECT_THREADED_CODE 0

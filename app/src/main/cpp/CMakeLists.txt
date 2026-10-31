@@ -1,0 +1,127 @@
+cmake_minimum_required(VERSION 3.22.1)
+project(localai CXX C)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# ============================================================
+# llama.cpp build options
+# ============================================================
+set(LLAMA_BUILD_TESTS      OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_EXAMPLES   OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_SERVER     OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_TOOLS      OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_COMMON     OFF CACHE BOOL "" FORCE)
+set(LLAMA_CURL             OFF CACHE BOOL "" FORCE)
+set(GGML_OPENMP            ON  CACHE BOOL "" FORCE)
+set(GGML_LLAMAFILE         OFF CACHE BOOL "" FORCE)
+set(GGML_BACKEND_SHARED    OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS       OFF CACHE BOOL "" FORCE)
+
+# Enable ARM acceleration globally (applies to llama.cpp's ggml-cpu too)
+set(GGML_NATIVE_CPU OFF CACHE BOOL "" FORCE)
+add_compile_options(-march=armv8.2-a+dotprod+i8mm+fp16)
+
+add_subdirectory(llama.cpp)
+
+set(MTMD_VIDEO OFF CACHE BOOL "" FORCE)
+set(LLAMA_SUBPROCESS OFF CACHE BOOL "" FORCE)
+add_subdirectory(llama.cpp/tools/mtmd)
+
+# ============================================================
+# stable-diffusion.cpp — static lib, reusing llama.cpp's ggml
+# ============================================================
+file(GLOB_RECURSE SD_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/src/*.cpp
+)
+
+# Oniguruma C sources — bundled regex library that SD uses.
+# IMPORTANT: some *_data.c files (unicode_egcb_data.c, unicode_fold*_key.c, etc.)
+# are #include'd from unicode.c and must NOT be compiled standalone.
+file(GLOB ONIGURUMA_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/thirdparty/oniguruma/*.c
+)
+list(FILTER ONIGURUMA_SOURCES EXCLUDE REGEX "/unicode_[a-z0-9_]*_data[a-z0-9_]*\\.c$")
+
+# utf8proc C sources — UTF-8 normalization used by hf_tokenizer
+file(GLOB UTF8PROC_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/thirdparty/utf8proc/*.c
+)
+# utf8proc_data.c is #include'd from utf8proc.c — don't compile standalone
+list(FILTER UTF8PROC_SOURCES EXCLUDE REGEX "/utf8proc_data\\.c$")
+
+# Zip file support (used by model loader)
+set(ZIP_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/thirdparty/zip.c
+)
+
+add_library(stable-diffusion STATIC ${SD_SOURCES} ${ONIGURUMA_SOURCES} ${UTF8PROC_SOURCES} ${ZIP_SOURCES})
+
+# Oniguruma needs its config header generated
+target_compile_definitions(stable-diffusion PRIVATE
+    HAVE_CONFIG_H=0
+)
+
+# Tell SD to use llama.cpp's ggml (skips int8 quant + sage attention paths
+# that don't exist in upstream ggml)
+target_compile_definitions(stable-diffusion PUBLIC SD_USE_UPSTREAM_GGML)
+
+# ARM CPU acceleration: dotprod, i8mm, fp16 — 2-4x faster for SD on modern chips
+target_compile_options(stable-diffusion PRIVATE
+    -march=armv8.2-a+dotprod+i8mm+fp16
+)
+
+target_include_directories(stable-diffusion PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/thirdparty
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/thirdparty/oniguruma
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/thirdparty/utf8proc
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/src/tokenizers/vocab
+    # llama.cpp's ggml — public headers
+    ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp/ggml/include
+    # llama.cpp's ggml — PRIVATE headers (ggml-impl.h, ggml-backend-impl.h, etc.)
+    ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp/ggml/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp/ggml/src/ggml-cpu
+    ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp/include
+)
+
+target_link_libraries(stable-diffusion PUBLIC ggml)
+
+# WebP for image encoding (Termux: pkg install libwebp)
+find_library(WEBP_LIB webp)
+if (WEBP_LIB)
+    target_link_libraries(stable-diffusion PUBLIC ${WEBP_LIB})
+endif()
+
+# ============================================================
+# JNI bridge
+# ============================================================
+add_library(localai SHARED native-lib.cpp sd-bridge.cpp vision-bridge.cpp)
+
+target_include_directories(localai PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp/tools/mtmd
+    ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp/ggml/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp/ggml/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp/common
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/thirdparty
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/thirdparty/oniguruma
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/thirdparty/utf8proc
+    ${CMAKE_CURRENT_SOURCE_DIR}/stable-diffusion.cpp/src/tokenizers/vocab
+)
+
+target_link_libraries(localai PRIVATE
+    llama
+    mtmd
+    stable-diffusion
+    ggml
+    android
+    log
+)
+
+# ============================================================

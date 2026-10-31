@@ -1,0 +1,35 @@
+# ==========================================
+# SECURITY: NEVER UPLOAD THESE
+# ==========================================
+*.keystore
+*.jks
+keystore.properties
+localai-release.keystore
+*.apk
+*.aab
+
+# ==========================================
+# AI MODELS (Too large for Git)
+# ==========================================
+*.gguf
+*.bin
+*.onnx
+*.tflite
+*.pt
+*.pth
+/models/
+
+# ==========================================
+# ANDROID / GRADLE BLOAT
+# ==========================================
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+/app/build
+/app/release
