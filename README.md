@@ -26,11 +26,20 @@ An advanced, fully offline AI application for Android. LocalAI runs entirely on 
 
 <div align="center">
   <img src="screenshots/Textchat.png" width="200" alt="Text Chat" />
+  <img src="screenshots/Chatwithmodel.png" width="200" alt="Chat with Model" />
   <img src="screenshots/Choosemodel.png" width="200" alt="Choose Model" />
+</div>
+<br/>
+<div align="center">
   <img src="screenshots/CPU.png" width="200" alt="CPU Mode" />
   <img src="screenshots/NPU.png" width="200" alt="NPU Mode" />
-  <img src="screenshots/Cloudeflare.png" width="200" alt="Cloudflare" />
   <img src="screenshots/Settings.png" width="200" alt="Settings" />
+</div>
+<br/>
+<div align="center">
+  <img src="screenshots/Imagegeneration.png" width="200" alt="Image Generation" />
+  <img src="screenshots/Cloudflare.png" width="200" alt="Cloudflare Tab" />
+  <img src="screenshots/Couldflareimage.png" width="200" alt="Cloudflare Image" />
 </div>
 
 ## 🛠️ Tech Stack
